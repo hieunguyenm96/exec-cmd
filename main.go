@@ -61,7 +61,7 @@ func main() {
 		output, err := cmd.Output()
 		if err != nil {
 			fmt.Println("Error running command:", err)
-			continue
+			break
 		}
 		if len(output) == 0 {
 			fmt.Println("Command output is empty")
