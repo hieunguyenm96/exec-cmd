@@ -13,6 +13,10 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
+// main is the entry point of the program.
+//
+// No parameters.
+// No return values.
 func main() {
 	var cmdName, cmdArg, mysqlUser, mysqlPass, mysqlHost, mysqlPort, mysqlDatabase string
 
@@ -59,51 +63,88 @@ func main() {
 			fmt.Println("Error running command:", err)
 			continue
 		}
+		if len(output) == 0 {
+			fmt.Println("Command output is empty")
+			continue
+		}
 
 		// Parse output
 		outputStr := string(output)
-		consumedAmount := parseOutput(outputStr)
+		clients := parseOutput(outputStr)
 
-		// Update database
-		updateDatabase(db, consumedAmount)
+		if clients == nil {
+			fmt.Println("Do not found the active client")
+			continue
+		}
+
+		for _, client := range clients {
+			if client.ClientID == "" || client.ConsumedAmount == 0 {
+				continue
+			}
+			// Update database
+			updateDatabase(db, client)
+		}
 	}
 }
 
-type clientData struct {
+type client struct {
 	ClientID       string
 	ConsumedAmount float64
 }
 
-func parseOutput(output string) clientData {
-	parts := strings.Split(output, ",")
-	clientData := clientData{}
-	for _, part := range parts {
-		if strings.HasPrefix(part, "lient_id:") {
-			clientData.ClientID = strings.TrimPrefix(part, "lient_id:")
-			continue
-		}
-		if strings.HasPrefix(part, "consumed_amount:") {
-			consumedAmountStr := strings.TrimPrefix(part, "consumed_amount:")
-			consumedAmountStr = strings.Trim(consumedAmountStr, ";")
+// parseOutput parses the output string and returns a slice of clients.
+//
+// Parameter:
+// output string - the output string to parse
+// Return:
+// []client - a slice of client structs parsed from the output string
+func parseOutput(output string) (clients []client) {
+	outputArr := strings.Split(output, ";")
 
-			consumedAmount, err := strconv.ParseFloat(consumedAmountStr, 64)
-			if err != nil {
-				fmt.Println("Error parsing consumed amount:", err)
-				return clientData
-			}
-			clientData.ConsumedAmount = consumedAmount
-			continue
-		}
+	if len(outputArr) == 0 {
+		fmt.Println("No clients found")
+		return nil
 	}
-	return clientData
+
+	for _, data := range outputArr {
+		parts := strings.Split(data, ",")
+		client := client{}
+		for _, part := range parts {
+			if strings.HasPrefix(part, "client_id:") {
+				client.ClientID = strings.TrimPrefix(part, "client_id:")
+				continue
+			}
+			if strings.HasPrefix(part, "consumed_amount:") {
+				consumedAmountStr := strings.TrimPrefix(part, "consumed_amount:")
+				consumedAmountStr = strings.Trim(consumedAmountStr, ";")
+
+				consumedAmount, err := strconv.ParseFloat(consumedAmountStr, 64)
+				if err != nil {
+					fmt.Println("Error parsing consumed amount:", err)
+					return nil
+				}
+				client.ConsumedAmount = consumedAmount
+				continue
+			}
+		}
+		clients = append(clients, client)
+	}
+
+	return clients
 }
 
-func updateDatabase(db *sql.DB, cd clientData) {
+// updateDatabase updates the credit_card table in the database by deducting the consumed amount
+// from the credit_money where the customer_id matches the client's ID.
+//
+// Parameters:
+// - db: *sql.DB - pointer to the database connection
+// - cd: client - the client struct containing ConsumedAmount and ClientID
+func updateDatabase(db *sql.DB, cd client) {
 	// Execute update query
 	_, err := db.Exec("UPDATE credit_card SET credit_money = (credit_money - ?) WHERE customer_id = ?", cd.ConsumedAmount, cd.ClientID)
 	if err != nil {
 		fmt.Println("Error updating database:", err)
 		return
 	}
-	fmt.Println("Database updated successfully")
+	fmt.Println("Database updated successfully for client: " + cd.ClientID)
 }

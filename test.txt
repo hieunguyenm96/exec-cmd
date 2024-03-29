@@ -1,1 +1,1 @@
-lient_id:HCM,number_of_calls:2,concurrent_calls:2,type:1,max_amount:50.000000,consumed_amount:1.000000;
+client_id:HCM,number_of_calls:2,concurrent_calls:2,type:1,max_amount:50.000000,consumed_amount:1.000000;client_id:HNI,number_of_calls:2,concurrent_calls:2,type:1,max_amount:50.000000,consumed_amount:1.000000;
