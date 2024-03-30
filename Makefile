@@ -9,7 +9,7 @@ mysqlDatabase := local
 
 
 build:
-	go build -o exec-cmd . 
+	env GOOS=linux GOARCH=arm64 go build -o exec-cmd . 
 
 exec:
 	./exec-cmd \
